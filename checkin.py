@@ -1293,6 +1293,45 @@ class ServerChanBackend(PushBackend):
             return False
 
 
+class PushPlusBackend(PushBackend):
+    """PushPlus 微信消息推送"""
+
+    name = "PushPlus"
+
+    def __init__(self, token: str):
+        self.token = token
+
+    def send(self, report: Report) -> bool:
+        try:
+            response = requests.post(
+                "https://www.pushplus.plus/send",
+                json={
+                    "token": self.token,
+                    "title": report.title,
+                    "content": report.render(),
+                    "template": "txt",
+                    "channel": "wechat"
+                },
+                timeout=(10, 20)
+            )
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("code") == 200:
+                logger.info("✅ PushPlus 推送请求成功")
+                return True
+
+            logger.error("❌ PushPlus 接口返回失败")
+            return False
+
+        except Exception:
+            logger.error("❌ PushPlus 推送请求异常")
+            return False
+
+
+
+
+
 class PushService:
     """聚合多个推送后端，向全部已配置的后端发送（都发）"""
 
@@ -1310,6 +1349,9 @@ class PushService:
         if not self.backends:
             logger.warning(f"{LogEmoji.WARNING} 未配置推送密钥，跳过。")
             return False
+        pushplus_token = os.getenv("PUSHPLUS_TOKEN", "").strip()
+        if pushplus_token:
+            self.backends.append(PushPlusBackend(pushplus_token))
 
         names = "、".join(b.name for b in self.backends)
         logger.info(f"{LogEmoji.INFO} 已配置 {len(self.backends)} 个后端（{names}），开始发送")
