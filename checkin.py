@@ -1343,15 +1343,16 @@ class PushService:
             self.backends.append(PushDeerBackend(config.push_key))
         if config.serverchan_key:
             self.backends.append(ServerChanBackend(config.serverchan_key))
+        pushplus_token = os.getenv("PUSHPLUS_TOKEN", "").strip()
+        if pushplus_token:
+            self.backends.append(PushPlusBackend(pushplus_token))
 
     def send(self, report: Report) -> bool:
         """向所有已配置后端发送，任一成功即视为成功"""
         if not self.backends:
             logger.warning(f"{LogEmoji.WARNING} 未配置推送密钥，跳过。")
             return False
-        pushplus_token = os.getenv("PUSHPLUS_TOKEN", "").strip()
-        if pushplus_token:
-            self.backends.append(PushPlusBackend(pushplus_token))
+
 
         names = "、".join(b.name for b in self.backends)
         logger.info(f"{LogEmoji.INFO} 已配置 {len(self.backends)} 个后端（{names}），开始发送")
